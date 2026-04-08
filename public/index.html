@@ -1,11 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="no">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MySocialSpace</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    
+    <header class="navbar">
+        <h1>MySocialSpace</h1>
+        <p>En enkel sosial plattform</p>
+    </header>
+
+    <main class="container">
+        <section class="create-post">
+            <h2>Lag et innlegg</h2>
+            <form id="postForm">
+                <input type="text" id="userId" placeholder="Bruker username" required>
+                <textarea id="content" placeholder="Hva tenker du på?" required></textarea>
+                <button type="submit">Publiser</button>
+            </form>
+        </section>
+
+        <section class="feed">
+            <h2>Innlegg</h2>
+            <div id="postsContainer">
+                <p>Ingen innlegg ennå.</p>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
 </body>
 </html>
