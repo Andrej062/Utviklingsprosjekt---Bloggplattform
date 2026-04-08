@@ -6,6 +6,8 @@ const app = express();
 app.use(express.json());
 app.use(express.static("public"));
 
+
+// Saves a new user to the database
 app.post("/api/users", (req, res) => {
     const { username, email, password, bio } = req.body;
 
@@ -23,6 +25,8 @@ app.post("/api/users", (req, res) => {
     }
 });
 
+
+// Gets all posts along with the username of the author
 app.get("/api/posts", (req, res) => {
     try {
         const stmt = db.prepare(`
@@ -39,6 +43,8 @@ app.get("/api/posts", (req, res) => {
     }
 });
 
+
+// Saves a new post to the database
 app.post("/api/posts", (req, res) => {
     const { user_id, content } = req.body;
 
@@ -56,6 +62,8 @@ app.post("/api/posts", (req, res) => {
     }
 });
 
+
+// Gets all users without their passwords
 app.get("/api/users", (req, res) => {
     try {
         const stmt = db.prepare(`
