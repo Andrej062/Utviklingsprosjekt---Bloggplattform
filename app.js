@@ -23,21 +23,21 @@ app.get("/api/users", (req, res) => {
 });
 
 // Lag ny bruker
-app.post("/api/users", (req, res) => {
-    const { username, email, password, bio } = req.body;
+// app.post("/api/users", (req, res) => {
+//     const { username, email, password, bio } = req.body;
 
-    try {
-        const stmt = db.prepare(`
-            INSERT INTO users (username, email, password, bio)
-            VALUES (?, ?, ?, ?)
-        `);
+//     try {
+//         const stmt = db.prepare(`
+//             INSERT INTO users (username, email, password, bio)
+//             VALUES (?, ?, ?, ?)
+//         `);
 
-        const result = stmt.run(username, email, password, bio);
-        res.json({ message: "User created", id: result.lastInsertRowid });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+//         const result = stmt.run(username, email, password, bio);
+//         res.json({ message: "User created", id: result.lastInsertRowid });
+//     } catch (error) {
+//         res.status(500).json({ error: error.message });
+//     }
+// });
 
 // Hent alle innlegg
 app.get("/api/posts", (req, res) => {
