@@ -1,7 +1,11 @@
 const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
 const db = require("./db");
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static("public"));
@@ -9,6 +13,16 @@ app.use(express.static("public"));
 function sendServerError(res, error) {
     res.status(500).json({ error: error.message });
 }
+
+io.on("connection", (socket) => {
+    socket.on("joinConversation", (conversationId) => {
+        if (!conversationId) {
+            return;
+        }
+
+        socket.join(String(conversationId));
+    });
+});
 
 app.get("/api/users", (req, res) => {
     try {
@@ -34,6 +48,83 @@ app.post("/api/users", (req, res) => {
         `).run(username, email, password, bio || "");
 
         res.json({ message: "User created", id: result.lastInsertRowid });
+    } catch (error) {
+        sendServerError(res, error);
+    }
+});
+
+app.get("/api/conversations", (req, res) => {
+    try {
+        const conversations = db.prepare(`
+            SELECT
+                conversations.id,
+                conversations.user1_id,
+                conversations.user2_id,
+                conversations.created_at,
+                u1.username AS user1_name,
+                u2.username AS user2_name,
+                u1.username || ' + ' || u2.username AS name
+            FROM conversations
+            JOIN users u1 ON conversations.user1_id = u1.id
+            JOIN users u2 ON conversations.user2_id = u2.id
+            ORDER BY conversations.id ASC
+        `).all();
+
+        res.json(conversations);
+    } catch (error) {
+        sendServerError(res, error);
+    }
+});
+
+app.get("/api/messages/:conversationId", (req, res) => {
+    const conversationId = req.params.conversationId;
+
+    try {
+        const messages = db.prepare(`
+            SELECT
+                messages.id,
+                messages.conversation_id,
+                messages.sender_id,
+                messages.content,
+                messages.created_at,
+                users.username
+            FROM messages
+            JOIN users ON messages.sender_id = users.id
+            WHERE messages.conversation_id = ?
+            ORDER BY messages.created_at ASC
+        `).all(conversationId);
+
+        res.json(messages);
+    } catch (error) {
+        sendServerError(res, error);
+    }
+});
+
+app.post("/api/messages/:conversationId", (req, res) => {
+    const conversationId = req.params.conversationId;
+    const { user_id, content } = req.body;
+
+    try {
+        const result = db.prepare(`
+            INSERT INTO messages (conversation_id, sender_id, content)
+            VALUES (?, ?, ?)
+        `).run(conversationId, user_id, content);
+
+        const message = db.prepare(`
+            SELECT
+                messages.id,
+                messages.conversation_id,
+                messages.sender_id,
+                messages.content,
+                messages.created_at,
+                users.username
+            FROM messages
+            JOIN users ON messages.sender_id = users.id
+            WHERE messages.id = ?
+        `).get(result.lastInsertRowid);
+
+        io.to(String(conversationId)).emit("chatMessage", message);
+        res.status(201).json(message);
     } catch (error) {
         sendServerError(res, error);
     }
@@ -144,6 +235,6 @@ app.post("/api/comments/:commentId/like", (req, res) => {
     }
 });
 
-app.listen(3000, () => {
+server.listen(3000, () => {
     console.log("Server is running on http://localhost:3000");
 });

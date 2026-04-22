@@ -62,50 +62,91 @@ body {
 
 .container {
     width: 90%;
-    max-width: 920px;
+    max-width: 1100px;
     margin: 30px auto;
 }
 
+.top-panels {
+    display: grid;
+    grid-template-columns: minmax(320px, 1fr) minmax(340px, 430px);
+    gap: 20px;
+    align-items: start;
+    margin-bottom: 20px;
+}
+
+.chat-panel,
 .create-post,
 .feed {
     background-color: white;
     padding: 22px;
-    margin-bottom: 20px;
     border-radius: 18px;
     box-shadow: 0 10px 24px rgba(22, 38, 70, 0.08);
 }
 
-.feed {
-    max-width: 760px;
-}
-
+.chat-panel,
 .create-post {
-    width: min(100%, 430px);
-    margin-left: auto;
     border: 1px solid #dce7fb;
 }
 
+.chat-header,
 .create-post-header {
     margin-bottom: 18px;
 }
 
+.chat-panel h2,
 .create-post h2,
 .feed h2 {
     margin-bottom: 8px;
     color: #1877f2;
 }
 
+.chat-header p,
 .create-post-header p {
     color: #5f6b7a;
     font-size: 14px;
 }
 
+.chat-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
 #postForm,
 .modal-form,
-.commentForm {
+.commentForm,
+.chat-form {
     display: flex;
     flex-direction: column;
     gap: 12px;
+}
+
+.chat-messages {
+    height: 360px;
+    overflow-y: auto;
+    border: 1px solid #dce7fb;
+    border-radius: 14px;
+    padding: 12px;
+    background-color: #f8fbff;
+    margin-bottom: 12px;
+}
+
+.chat-message {
+    background-color: #ffffff;
+    border: 1px solid #dce7fb;
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.chat-message p {
+    margin: 6px 0;
+    line-height: 1.4;
+}
+
+.chat-message small {
+    color: #667085;
 }
 
 .form-label {
@@ -294,6 +335,12 @@ button:hover {
     overflow-y: auto;
 }
 
+@media (max-width: 900px) {
+    .top-panels {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 600px) {
     .navbar {
         flex-direction: column;
@@ -312,6 +359,7 @@ button:hover {
         justify-content: center;
     }
 
+    .chat-panel,
     .create-post,
     .feed,
     .modal-content {
@@ -319,9 +367,11 @@ button:hover {
         padding: 15px;
     }
 
+    .chat-controls,
     .modal-header,
     .form-footer,
     .post-top {
+        grid-template-columns: 1fr;
         flex-direction: column;
         align-items: stretch;
     }

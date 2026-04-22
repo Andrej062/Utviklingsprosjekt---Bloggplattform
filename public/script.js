@@ -7,13 +7,22 @@ const postUserSelect = document.getElementById("userId");
 const postImageInput = document.getElementById("postImage");
 const imagePreview = document.getElementById("imagePreview");
 
+const chatConversationSelect = document.getElementById("chatConversation");
+const chatUserSelect = document.getElementById("chatUser");
+const chatMessages = document.getElementById("chatMessages");
+const chatForm = document.getElementById("chatForm");
+const chatContentInput = document.getElementById("chatContent");
+
 const registerModal = document.getElementById("registerModal");
 const usersModal = document.getElementById("usersModal");
 const openRegisterModalButton = document.getElementById("openRegisterModal");
 const openUsersModalButton = document.getElementById("openUsersModal");
 const closeButtons = document.querySelectorAll(".close-modal");
 
+const socket = io();
+
 let savedUsers = [];
+let savedConversations = [];
 const openComments = new Set();
 
 async function getJson(url) {
@@ -45,7 +54,7 @@ function closeModal(modal) {
     modal.classList.add("hidden");
 }
 
-function renderUserOptions(selectElement, selectedValue = "") {
+function fillSelectWithUsers(selectElement, selectedValue = "") {
     selectElement.innerHTML = `<option value="">Velg bruker</option>`;
 
     savedUsers.forEach((user) => {
@@ -59,28 +68,106 @@ function renderUserOptions(selectElement, selectedValue = "") {
 
         selectElement.appendChild(option);
     });
+
+    if (!selectElement.value && savedUsers.length > 0) {
+        selectElement.value = String(savedUsers[0].id);
+    }
+}
+
+function fillConversationSelect(selectedValue = "") {
+    chatConversationSelect.innerHTML = "";
+
+    savedConversations.forEach((conversation) => {
+        const option = document.createElement("option");
+        option.value = conversation.id;
+        option.textContent = conversation.name;
+
+        if (String(selectedValue) === String(conversation.id)) {
+            option.selected = true;
+        }
+
+        chatConversationSelect.appendChild(option);
+    });
+
+    if (!chatConversationSelect.value && savedConversations.length > 0) {
+        chatConversationSelect.value = String(savedConversations[0].id);
+    }
+}
+
+function addChatMessage(message) {
+    const messageDiv = document.createElement("div");
+    messageDiv.className = "chat-message";
+    messageDiv.innerHTML = `
+        <strong>${message.username}</strong>
+        <p>${message.content}</p>
+        <small>${message.created_at}</small>
+    `;
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 async function loadUsers() {
-    savedUsers = await getJson("/api/users");
-    usersContainer.innerHTML = "";
-    renderUserOptions(postUserSelect, postUserSelect.value);
+    try {
+        savedUsers = await getJson("/api/users");
+        usersContainer.innerHTML = "";
 
-    if (savedUsers.length === 0) {
-        usersContainer.innerHTML = "<p>Ingen brukere ennå.</p>";
+        fillSelectWithUsers(postUserSelect, postUserSelect.value);
+        fillSelectWithUsers(chatUserSelect, chatUserSelect.value || postUserSelect.value);
+
+        if (savedUsers.length === 0) {
+            usersContainer.innerHTML = "<p>Ingen brukere ennå.</p>";
+            return;
+        }
+
+        savedUsers.forEach((user) => {
+            const userDiv = document.createElement("div");
+            userDiv.className = "comment";
+            userDiv.innerHTML = `
+                <strong>${user.username}</strong>
+                <p>${user.email}</p>
+                <small>${user.bio || "Ingen bio registrert."}</small>
+            `;
+            usersContainer.appendChild(userDiv);
+        });
+    } catch (error) {
+        usersContainer.innerHTML = "<p>Kunne ikke laste brukere.</p>";
+    }
+}
+
+async function loadConversations() {
+    try {
+        savedConversations = await getJson("/api/conversations");
+        fillConversationSelect(chatConversationSelect.value);
+
+        if (chatConversationSelect.value) {
+            socket.emit("joinConversation", chatConversationSelect.value);
+        }
+    } catch (error) {
+        chatMessages.innerHTML = "<p>Kunne ikke laste samtaler.</p>";
+    }
+}
+
+async function loadChatMessages() {
+    const conversationId = chatConversationSelect.value;
+
+    if (!conversationId) {
+        chatMessages.innerHTML = "<p>Velg en samtale for å se meldinger.</p>";
         return;
     }
 
-    savedUsers.forEach((user) => {
-        const userDiv = document.createElement("div");
-        userDiv.className = "comment";
-        userDiv.innerHTML = `
-            <strong>${user.username}</strong>
-            <p>${user.email}</p>
-            <small>${user.bio || "Ingen bio registrert."}</small>
-        `;
-        usersContainer.appendChild(userDiv);
-    });
+    try {
+        const messages = await getJson(`/api/messages/${conversationId}`);
+        chatMessages.innerHTML = "";
+
+        if (messages.length === 0) {
+            chatMessages.innerHTML = "<p>Ingen meldinger ennå.</p>";
+            return;
+        }
+
+        messages.forEach(addChatMessage);
+    } catch (error) {
+        chatMessages.innerHTML = "<p>Kunne ikke laste meldinger.</p>";
+    }
 }
 
 function createCommentUserSelect(postId) {
@@ -100,11 +187,7 @@ function createCommentUserSelect(postId) {
 }
 
 function getCommentsButtonText(postId) {
-    if (openComments.has(postId)) {
-        return "Skjul kommentarer";
-    }
-
-    return "Vis kommentarer";
+    return openComments.has(postId) ? "Skjul kommentarer" : "Vis kommentarer";
 }
 
 function readImageAsDataUrl(file) {
@@ -123,49 +206,53 @@ function resetImagePreview() {
 }
 
 async function loadPosts() {
-    const posts = await getJson("/api/posts");
-    postsContainer.innerHTML = "";
+    try {
+        const posts = await getJson("/api/posts");
+        postsContainer.innerHTML = "";
 
-    if (posts.length === 0) {
-        postsContainer.innerHTML = "<p>Ingen innlegg ennå.</p>";
-        return;
-    }
+        if (posts.length === 0) {
+            postsContainer.innerHTML = "<p>Ingen innlegg ennå.</p>";
+            return;
+        }
 
-    posts.forEach((post) => {
-        const postDiv = document.createElement("div");
-        postDiv.className = "post";
+        posts.forEach((post) => {
+            const postDiv = document.createElement("div");
+            postDiv.className = "post";
 
-        const imageHtml = post.image
-            ? `<img src="${post.image}" alt="Bilde i innlegg" class="post-image">`
-            : "";
+            const imageHtml = post.image
+                ? `<img src="${post.image}" alt="Bilde i innlegg" class="post-image">`
+                : "";
 
-        postDiv.innerHTML = `
-            <div class="post-top">
-                <div>
-                    <h3>${post.username}</h3>
-                    <small>${post.created_at}</small>
+            postDiv.innerHTML = `
+                <div class="post-top">
+                    <div>
+                        <h3>${post.username}</h3>
+                        <small>${post.created_at}</small>
+                    </div>
+                    <span class="post-badge">Innlegg</span>
                 </div>
-                <span class="post-badge">Innlegg</span>
-            </div>
-            <p>${post.content}</p>
-            ${imageHtml}
-            <div class="post-actions">
-                <button type="button" onclick="likePost(${post.id})">Lik (${post.likes || 0})</button>
-                <button type="button" onclick="toggleComments(${post.id}, this)">${getCommentsButtonText(post.id)}</button>
-            </div>
-            <div id="comments-${post.id}" class="comments-box"></div>
-            <form onsubmit="addComment(event, ${post.id})" class="commentForm">
-                ${createCommentUserSelect(post.id)}
-                <input type="text" name="content" placeholder="Skriv en kommentar..." required>
-                <button type="submit">Kommenter</button>
-            </form>
-        `;
+                <p>${post.content}</p>
+                ${imageHtml}
+                <div class="post-actions">
+                    <button type="button" onclick="likePost(${post.id})">Lik (${post.likes || 0})</button>
+                    <button type="button" onclick="toggleComments(${post.id}, this)">${getCommentsButtonText(post.id)}</button>
+                </div>
+                <div id="comments-${post.id}" class="comments-box"></div>
+                <form onsubmit="addComment(event, ${post.id})" class="commentForm">
+                    ${createCommentUserSelect(post.id)}
+                    <input type="text" name="content" placeholder="Skriv en kommentar..." required>
+                    <button type="submit">Kommenter</button>
+                </form>
+            `;
 
-        postsContainer.appendChild(postDiv);
-    });
+            postsContainer.appendChild(postDiv);
+        });
 
-    for (const postId of openComments) {
-        showComments(postId);
+        for (const postId of openComments) {
+            showComments(postId);
+        }
+    } catch (error) {
+        postsContainer.innerHTML = "<p>Kunne ikke laste innlegg.</p>";
     }
 }
 
@@ -182,6 +269,34 @@ postImageInput.addEventListener("change", async function () {
     imagePreview.classList.remove("hidden");
 });
 
+chatConversationSelect.addEventListener("change", function () {
+    if (chatConversationSelect.value) {
+        socket.emit("joinConversation", chatConversationSelect.value);
+    }
+
+    loadChatMessages();
+});
+
+chatForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const conversationId = chatConversationSelect.value;
+    const userId = chatUserSelect.value;
+    const content = chatContentInput.value.trim();
+
+    if (!conversationId || !userId || !content) {
+        return;
+    }
+
+    await postJson(`/api/messages/${conversationId}`, {
+        user_id: userId,
+        content: content
+    });
+
+    chatContentInput.value = "";
+    loadChatMessages();
+});
+
 postForm.addEventListener("submit", async function (event) {
     event.preventDefault();
 
@@ -189,6 +304,10 @@ postForm.addEventListener("submit", async function (event) {
     const content = document.getElementById("content").value;
     const imageFile = postImageInput.files[0];
     let image = null;
+
+    if (!userId || !content.trim()) {
+        return;
+    }
 
     if (imageFile) {
         image = await readImageAsDataUrl(imageFile);
@@ -201,7 +320,7 @@ postForm.addEventListener("submit", async function (event) {
     });
 
     postForm.reset();
-    renderUserOptions(postUserSelect);
+    fillSelectWithUsers(postUserSelect, postUserSelect.value);
     resetImagePreview();
     loadPosts();
 });
@@ -228,6 +347,7 @@ registerForm.addEventListener("submit", async function (event) {
         registerForm.reset();
         await loadUsers();
         postUserSelect.value = String(result.id);
+        chatUserSelect.value = String(result.id);
         return;
     }
 
@@ -250,6 +370,19 @@ closeButtons.forEach((button) => {
         const modal = document.getElementById(modalId);
         closeModal(modal);
     });
+});
+
+socket.on("chatMessage", (message) => {
+    if (String(message.conversation_id) !== String(chatConversationSelect.value)) {
+        return;
+    }
+
+    const emptyMessage = chatMessages.querySelector("p");
+    if (emptyMessage && chatMessages.children.length === 1) {
+        chatMessages.innerHTML = "";
+    }
+
+    addChatMessage(message);
 });
 
 async function likePost(postId) {
@@ -318,7 +451,15 @@ async function addComment(event, postId) {
 
 async function startPage() {
     await loadUsers();
+    await loadConversations();
     await loadPosts();
+
+    if (chatConversationSelect.value) {
+        socket.emit("joinConversation", chatConversationSelect.value);
+        await loadChatMessages();
+    } else {
+        chatMessages.innerHTML = "<p>Velg en samtale for å se meldinger.</p>";
+    }
 }
 
 async function likeComment(commentId, postId) {

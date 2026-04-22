@@ -13,7 +13,7 @@
             <p>En enkel sosial plattform</p>
         </div>
         <nav class="top-nav">
-            <a href="#create-post">Nytt innlegg</a>
+            <a href="#topPanels">Nytt innlegg</a>
             <a href="#feed">Innlegg</a>
             <button type="button" id="openRegisterModal">Registrer bruker</button>
             <button type="button" id="openUsersModal">Vis brukere</button>
@@ -21,32 +21,61 @@
     </header>
 
     <main class="container">
-        <section id="create-post" class="create-post">
-            <div class="create-post-header">
-                <div>
-                    <h2>Lag et innlegg</h2>
-                    <p>Velg bruker, skriv en tekst og legg gjerne til et bilde.</p>
+        <section id="topPanels" class="top-panels">
+            <section class="chat-panel">
+                <div class="chat-header">
+                    <div>
+                        <h2>Chat</h2>
+                        <p>Snakk med andre brukere ved siden av innleggene.</p>
+                    </div>
                 </div>
-            </div>
 
-            <form id="postForm">
-                <label class="form-label" for="userId">Hvem publiserer?</label>
-                <select id="userId" required>
-                    <option value="">Velg bruker</option>
-                </select>
-
-                <label class="form-label" for="content">Hva vil du dele?</label>
-                <textarea id="content" placeholder="Skriv innlegget ditt her..." required></textarea>
-
-                <label class="form-label" for="postImage">Legg til bilde (valgfritt)</label>
-                <input type="file" id="postImage" accept="image/*">
-                <img id="imagePreview" class="image-preview hidden" alt="Forhåndsvisning av bilde">
-
-                <div class="form-footer">
-                    <p class="form-help">Innlegget blir vist i feeden med en gang.</p>
-                    <button type="submit">Publiser innlegg</button>
+                <div class="chat-controls">
+                    <div>
+                        <label class="form-label" for="chatConversation">Velg samtale</label>
+                        <select id="chatConversation"></select>
+                    </div>
+                    <div>
+                        <label class="form-label" for="chatUser">Skriv som</label>
+                        <select id="chatUser"></select>
+                    </div>
                 </div>
-            </form>
+
+                <div id="chatMessages" class="chat-messages"></div>
+
+                <form id="chatForm" class="chat-form">
+                    <input type="text" id="chatContent" placeholder="Skriv en melding..." required>
+                    <button type="submit">Send</button>
+                </form>
+            </section>
+
+            <section id="create-post" class="create-post">
+                <div class="create-post-header">
+                    <div>
+                        <h2>Lag et innlegg</h2>
+                        <p>Velg bruker, skriv en tekst og legg gjerne til et bilde.</p>
+                    </div>
+                </div>
+
+                <form id="postForm">
+                    <label class="form-label" for="userId">Hvem publiserer?</label>
+                    <select id="userId" required>
+                        <option value="">Velg bruker</option>
+                    </select>
+
+                    <label class="form-label" for="content">Hva vil du dele?</label>
+                    <textarea id="content" placeholder="Skriv innlegget ditt her..." required></textarea>
+
+                    <label class="form-label" for="postImage">Legg til bilde (valgfritt)</label>
+                    <input type="file" id="postImage" accept="image/*">
+                    <img id="imagePreview" class="image-preview hidden" alt="Forhåndsvisning av bilde">
+
+                    <div class="form-footer">
+                        <p class="form-help">Innlegget blir vist i feeden med en gang.</p>
+                        <button type="submit">Publiser innlegg</button>
+                    </div>
+                </form>
+            </section>
         </section>
 
         <section id="feed" class="feed">
@@ -85,6 +114,7 @@
         </div>
     </div>
 
+    <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
