@@ -8,25 +8,82 @@
 </head>
 <body>
     <header class="navbar">
-        <h1>MySocialSpace</h1>
-        <p>En enkel sosial plattform</p>
+        <div>
+            <h1>MySocialSpace</h1>
+            <p>En enkel sosial plattform</p>
+        </div>
+        <nav class="top-nav">
+            <a href="#create-post">Nytt innlegg</a>
+            <a href="#feed">Innlegg</a>
+            <button type="button" id="openRegisterModal">Registrer bruker</button>
+            <button type="button" id="openUsersModal">Vis brukere</button>
+        </nav>
     </header>
 
     <main class="container">
-        <section class="create-post">
-            <h2>Lag et innlegg</h2>
+        <section id="create-post" class="create-post">
+            <div class="create-post-header">
+                <div>
+                    <h2>Lag et innlegg</h2>
+                    <p>Velg bruker, skriv en tekst og legg gjerne til et bilde.</p>
+                </div>
+            </div>
+
             <form id="postForm">
-                <input type="number" id="userId" placeholder="Bruker-ID" required>
-                <textarea id="content" placeholder="Hva tenker du på?" required></textarea>
-                <button type="submit">Publiser</button>
+                <label class="form-label" for="userId">Hvem publiserer?</label>
+                <select id="userId" required>
+                    <option value="">Velg bruker</option>
+                </select>
+
+                <label class="form-label" for="content">Hva vil du dele?</label>
+                <textarea id="content" placeholder="Skriv innlegget ditt her..." required></textarea>
+
+                <label class="form-label" for="postImage">Legg til bilde (valgfritt)</label>
+                <input type="file" id="postImage" accept="image/*">
+                <img id="imagePreview" class="image-preview hidden" alt="Forhåndsvisning av bilde">
+
+                <div class="form-footer">
+                    <p class="form-help">Innlegget blir vist i feeden med en gang.</p>
+                    <button type="submit">Publiser innlegg</button>
+                </div>
             </form>
         </section>
 
-        <section class="feed">
+        <section id="feed" class="feed">
             <h2>Innlegg</h2>
             <div id="postsContainer"></div>
         </section>
     </main>
+
+    <div id="registerModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Registrer ny bruker</h2>
+                <button type="button" class="close-modal" data-close="registerModal">Lukk</button>
+            </div>
+
+            <form id="registerForm" class="modal-form">
+                <input type="text" id="registerUsername" placeholder="Brukernavn" required>
+                <input type="email" id="registerEmail" placeholder="E-post" required>
+                <input type="password" id="registerPassword" placeholder="Passord" required>
+                <textarea id="registerBio" placeholder="Kort bio"></textarea>
+                <button type="submit">Lagre bruker</button>
+            </form>
+
+            <p id="registerMessage" class="modal-message"></p>
+        </div>
+    </div>
+
+    <div id="usersModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Brukere i databasen</h2>
+                <button type="button" class="close-modal" data-close="usersModal">Lukk</button>
+            </div>
+
+            <div id="usersContainer" class="users-list"></div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
