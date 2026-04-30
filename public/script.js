@@ -1,3 +1,4 @@
+// Henter viktige HTML-elementer fra siden
 const postForm = document.getElementById("postForm");
 const postsContainer = document.getElementById("postsContainer");
 const usersContainer = document.getElementById("usersContainer");
@@ -7,29 +8,38 @@ const postUserSelect = document.getElementById("userId");
 const postImageInput = document.getElementById("postImage");
 const imagePreview = document.getElementById("imagePreview");
 
+// Henter HTML-elementer som brukes i chatten
 const chatConversationSelect = document.getElementById("chatConversation");
 const chatUserSelect = document.getElementById("chatUser");
 const chatMessages = document.getElementById("chatMessages");
 const chatForm = document.getElementById("chatForm");
 const chatContentInput = document.getElementById("chatContent");
 
+// Henter modaler og knapper for å åpne/lukke dem
 const registerModal = document.getElementById("registerModal");
 const usersModal = document.getElementById("usersModal");
 const openRegisterModalButton = document.getElementById("openRegisterModal");
 const openUsersModalButton = document.getElementById("openUsersModal");
 const closeButtons = document.querySelectorAll(".close-modal");
 
+// Lager forbindelse til socket.io for sanntidschat
 const socket = io();
 
+// Lagrer brukere og samtaler i minnet på frontend
 let savedUsers = [];
 let savedConversations = [];
+
+// Husker hvilke kommentarfelt som er åpne
 const openComments = new Set();
 
+
+// Hjelpefunksjon for å hente JSON-data fra serveren med GET
 async function getJson(url) {
     const response = await fetch(url);
     return response.json();
 }
 
+// Hjelpefunksjon for å sende JSON-data til serveren med POST
 async function postJson(url, body) {
     return fetch(url, {
         method: "POST",
@@ -40,20 +50,26 @@ async function postJson(url, body) {
     });
 }
 
+// Hjelpefunksjon for POST-forespørsel uten innhold i body
 async function postWithoutBody(url) {
     return fetch(url, {
         method: "POST"
     });
 }
 
+
+// Åpner en modal ved å fjerne klassen "hidden"
 function openModal(modal) {
     modal.classList.remove("hidden");
 }
 
+// Lukker en modal ved å legge til klassen "hidden"
 function closeModal(modal) {
     modal.classList.add("hidden");
 }
 
+
+// Fyller en select-liste med brukere
 function fillSelectWithUsers(selectElement, selectedValue = "") {
     selectElement.innerHTML = `<option value="">Velg bruker</option>`;
 
@@ -62,6 +78,7 @@ function fillSelectWithUsers(selectElement, selectedValue = "") {
         option.value = user.id;
         option.textContent = `${user.username} (ID: ${user.id})`;
 
+        // Hvis denne brukeren skal være valgt, markerer vi den
         if (String(selectedValue) === String(user.id)) {
             option.selected = true;
         }
@@ -69,11 +86,14 @@ function fillSelectWithUsers(selectElement, selectedValue = "") {
         selectElement.appendChild(option);
     });
 
+    // Hvis ingen bruker er valgt, velg den første i lista
     if (!selectElement.value && savedUsers.length > 0) {
         selectElement.value = String(savedUsers[0].id);
     }
 }
 
+
+// Fyller select-listen med tilgjengelige samtaler i chatten
 function fillConversationSelect(selectedValue = "") {
     chatConversationSelect.innerHTML = "";
 
@@ -82,6 +102,7 @@ function fillConversationSelect(selectedValue = "") {
         option.value = conversation.id;
         option.textContent = conversation.name;
 
+        // Marker valgt samtale hvis den finnes
         if (String(selectedValue) === String(conversation.id)) {
             option.selected = true;
         }
@@ -89,11 +110,14 @@ function fillConversationSelect(selectedValue = "") {
         chatConversationSelect.appendChild(option);
     });
 
+    // Hvis ingen samtale er valgt, velg den første
     if (!chatConversationSelect.value && savedConversations.length > 0) {
         chatConversationSelect.value = String(savedConversations[0].id);
     }
 }
 
+
+// Legger én melding inn i chatvinduet
 function addChatMessage(message) {
     const messageDiv = document.createElement("div");
     messageDiv.className = "chat-message";
@@ -103,22 +127,29 @@ function addChatMessage(message) {
         <small>${message.created_at}</small>
     `;
     chatMessages.appendChild(messageDiv);
+
+    // Scroller automatisk ned til siste melding
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
+
+// Henter alle brukere fra serveren og viser dem
 async function loadUsers() {
     try {
         savedUsers = await getJson("/api/users");
         usersContainer.innerHTML = "";
 
+        // Oppdaterer select-lister med brukere
         fillSelectWithUsers(postUserSelect, postUserSelect.value);
         fillSelectWithUsers(chatUserSelect, chatUserSelect.value || postUserSelect.value);
 
+        // Hvis det ikke finnes brukere, vis melding
         if (savedUsers.length === 0) {
             usersContainer.innerHTML = "<p>Ingen brukere ennå.</p>";
             return;
         }
 
+        // Viser alle brukere i brukerlisten
         savedUsers.forEach((user) => {
             const userDiv = document.createElement("div");
             userDiv.className = "comment";
@@ -134,11 +165,14 @@ async function loadUsers() {
     }
 }
 
+
+// Henter alle samtaler for chatten
 async function loadConversations() {
     try {
         savedConversations = await getJson("/api/conversations");
         fillConversationSelect(chatConversationSelect.value);
 
+        // Hvis en samtale er valgt, bli med i socket-rommet for den samtalen
         if (chatConversationSelect.value) {
             socket.emit("joinConversation", chatConversationSelect.value);
         }
@@ -147,9 +181,12 @@ async function loadConversations() {
     }
 }
 
+
+// Henter meldinger for valgt samtale
 async function loadChatMessages() {
     const conversationId = chatConversationSelect.value;
 
+    // Hvis ingen samtale er valgt, vis melding
     if (!conversationId) {
         chatMessages.innerHTML = "<p>Velg en samtale for å se meldinger.</p>";
         return;
@@ -159,19 +196,24 @@ async function loadChatMessages() {
         const messages = await getJson(`/api/messages/${conversationId}`);
         chatMessages.innerHTML = "";
 
+        // Hvis ingen meldinger finnes, vis melding
         if (messages.length === 0) {
             chatMessages.innerHTML = "<p>Ingen meldinger ennå.</p>";
             return;
         }
 
+        // Vis alle meldinger i chatten
         messages.forEach(addChatMessage);
     } catch (error) {
         chatMessages.innerHTML = "<p>Kunne ikke laste meldinger.</p>";
     }
 }
 
+
+// Lager en select-liste for å velge bruker når man kommenterer
 function createCommentUserSelect(postId) {
     const selectedPostUser = postUserSelect.value;
+
     const options = savedUsers.map((user) => {
         const isSelected = String(user.id) === String(selectedPostUser) ? "selected" : "";
         return `<option value="${user.id}" ${isSelected}>${user.username} (ID: ${user.id})</option>`;
@@ -186,39 +228,55 @@ function createCommentUserSelect(postId) {
     `;
 }
 
+
+// Bestemmer teksten på kommentarknappen
 function getCommentsButtonText(postId) {
     return openComments.has(postId) ? "Skjul kommentarer" : "Vis kommentarer";
 }
 
+
+// Leser et bilde og gjør det om til Data URL
 function readImageAsDataUrl(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
+
+        // Når bildet er lest ferdig, send tilbake resultatet
         reader.onload = () => resolve(reader.result);
+
+        // Hvis noe går galt, send feil
         reader.onerror = () => reject(new Error("Could not read image"));
+
         reader.readAsDataURL(file);
     });
 }
 
+
+// Nullstiller forhåndsvisning av bilde i skjemaet
 function resetImagePreview() {
     imagePreview.src = "";
     imagePreview.classList.add("hidden");
     postImageInput.value = "";
 }
 
+
+// Henter alle innlegg og viser dem på siden
 async function loadPosts() {
     try {
         const posts = await getJson("/api/posts");
         postsContainer.innerHTML = "";
 
+        // Hvis ingen innlegg finnes, vis melding
         if (posts.length === 0) {
             postsContainer.innerHTML = "<p>Ingen innlegg ennå.</p>";
             return;
         }
 
+        // Lager HTML for hvert innlegg
         posts.forEach((post) => {
             const postDiv = document.createElement("div");
             postDiv.className = "post";
 
+            // Hvis innlegget har bilde, vis det
             const imageHtml = post.image
                 ? `<img src="${post.image}" alt="Bilde i innlegg" class="post-image">`
                 : "";
@@ -248,6 +306,7 @@ async function loadPosts() {
             postsContainer.appendChild(postDiv);
         });
 
+        // Åpner kommentarer på nytt for innlegg som allerede var åpne
         for (const postId of openComments) {
             showComments(postId);
         }
@@ -256,6 +315,8 @@ async function loadPosts() {
     }
 }
 
+
+// Når brukeren velger et bilde, vis forhåndsvisning
 postImageInput.addEventListener("change", async function () {
     const file = postImageInput.files[0];
 
@@ -269,6 +330,8 @@ postImageInput.addEventListener("change", async function () {
     imagePreview.classList.remove("hidden");
 });
 
+
+// Når brukeren bytter samtale i chatten
 chatConversationSelect.addEventListener("change", function () {
     if (chatConversationSelect.value) {
         socket.emit("joinConversation", chatConversationSelect.value);
@@ -277,6 +340,8 @@ chatConversationSelect.addEventListener("change", function () {
     loadChatMessages();
 });
 
+
+// Når brukeren sender en ny chatmelding
 chatForm.addEventListener("submit", async function (event) {
     event.preventDefault();
 
@@ -284,19 +349,24 @@ chatForm.addEventListener("submit", async function (event) {
     const userId = chatUserSelect.value;
     const content = chatContentInput.value.trim();
 
+    // Hvis noe mangler, stopp
     if (!conversationId || !userId || !content) {
         return;
     }
 
+    // Sender meldingen til serveren
     await postJson(`/api/messages/${conversationId}`, {
         user_id: userId,
         content: content
     });
 
+    // Tøm tekstfeltet og last meldinger på nytt
     chatContentInput.value = "";
     loadChatMessages();
 });
 
+
+// Når brukeren sender et nytt innlegg
 postForm.addEventListener("submit", async function (event) {
     event.preventDefault();
 
@@ -305,26 +375,32 @@ postForm.addEventListener("submit", async function (event) {
     const imageFile = postImageInput.files[0];
     let image = null;
 
+    // Hvis bruker eller tekst mangler, stopp
     if (!userId || !content.trim()) {
         return;
     }
 
+    // Hvis et bilde er valgt, gjør det om til Data URL
     if (imageFile) {
         image = await readImageAsDataUrl(imageFile);
     }
 
+    // Sender nytt innlegg til serveren
     await postJson("/api/posts", {
         user_id: userId,
         content: content,
         image: image
     });
 
+    // Nullstiller skjema og laster innlegg på nytt
     postForm.reset();
     fillSelectWithUsers(postUserSelect, postUserSelect.value);
     resetImagePreview();
     loadPosts();
 });
 
+
+// Når brukeren sender registreringsskjemaet
 registerForm.addEventListener("submit", async function (event) {
     event.preventDefault();
 
@@ -333,6 +409,7 @@ registerForm.addEventListener("submit", async function (event) {
     const password = document.getElementById("registerPassword").value;
     const bio = document.getElementById("registerBio").value;
 
+    // Sender ny bruker til serveren
     const response = await postJson("/api/users", {
         username: username,
         email: email,
@@ -342,6 +419,7 @@ registerForm.addEventListener("submit", async function (event) {
 
     const result = await response.json();
 
+    // Hvis registrering gikk bra, oppdater brukerlisten
     if (response.ok) {
         registerMessage.textContent = `Bruker lagret med ID ${result.id}`;
         registerForm.reset();
@@ -351,19 +429,26 @@ registerForm.addEventListener("submit", async function (event) {
         return;
     }
 
+    // Hvis noe gikk galt, vis feilmelding
     registerMessage.textContent = result.error || "Kunne ikke lagre bruker.";
 });
 
+
+// Åpner registreringsmodal
 openRegisterModalButton.addEventListener("click", function () {
     registerMessage.textContent = "";
     openModal(registerModal);
 });
 
+
+// Åpner modal med brukerliste
 openUsersModalButton.addEventListener("click", async function () {
     await loadUsers();
     openModal(usersModal);
 });
 
+
+// Lukker modaler når brukeren trykker på lukkeknapp
 closeButtons.forEach((button) => {
     button.addEventListener("click", function () {
         const modalId = button.dataset.close;
@@ -372,27 +457,37 @@ closeButtons.forEach((button) => {
     });
 });
 
+
+// Lytter etter nye chatmeldinger fra socket.io
 socket.on("chatMessage", (message) => {
+    // Hvis meldingen ikke hører til valgt samtale, ignorer den
     if (String(message.conversation_id) !== String(chatConversationSelect.value)) {
         return;
     }
 
+    // Hvis chatten bare viser en tom tekst, fjern den
     const emptyMessage = chatMessages.querySelector("p");
     if (emptyMessage && chatMessages.children.length === 1) {
         chatMessages.innerHTML = "";
     }
 
+    // Legg til ny melding i chatten
     addChatMessage(message);
 });
 
+
+// Sender like på et innlegg
 async function likePost(postId) {
     await postWithoutBody(`/api/posts/${postId}/like`);
     loadPosts();
 }
 
+
+// Viser eller skjuler kommentarer for et innlegg
 async function toggleComments(postId, button) {
     const commentsBox = document.getElementById(`comments-${postId}`);
 
+    // Hvis kommentarene allerede er åpne, skjul dem
     if (openComments.has(postId)) {
         openComments.delete(postId);
         commentsBox.innerHTML = "";
@@ -400,21 +495,26 @@ async function toggleComments(postId, button) {
         return;
     }
 
+    // Hvis kommentarene er lukket, åpne dem
     openComments.add(postId);
     button.textContent = "Skjul kommentarer";
     await showComments(postId);
 }
 
+
+// Henter og viser kommentarer for ett innlegg
 async function showComments(postId) {
     const comments = await getJson(`/api/comments/${postId}`);
     const commentsBox = document.getElementById(`comments-${postId}`);
     commentsBox.innerHTML = "";
 
+    // Hvis ingen kommentarer finnes, vis melding
     if (comments.length === 0) {
         commentsBox.innerHTML = "<p>Ingen kommentarer ennå.</p>";
         return;
     }
 
+    // Vis alle kommentarer
     comments.forEach((comment) => {
         const commentDiv = document.createElement("div");
         commentDiv.className = "comment";
@@ -430,6 +530,8 @@ async function showComments(postId) {
     });
 }
 
+
+// Sender ny kommentar til serveren
 async function addComment(event, postId) {
     event.preventDefault();
 
@@ -443,17 +545,21 @@ async function addComment(event, postId) {
         content: content
     });
 
+    // Tøm skjemaet og vis kommentarene på nytt hvis feltet er åpent
     form.reset();
     if (openComments.has(postId)) {
         showComments(postId);
     }
 }
 
+
+// Starter siden når alt lastes inn
 async function startPage() {
     await loadUsers();
     await loadConversations();
     await loadPosts();
 
+    // Hvis en samtale er valgt, koble til og hent meldinger
     if (chatConversationSelect.value) {
         socket.emit("joinConversation", chatConversationSelect.value);
         await loadChatMessages();
@@ -462,12 +568,17 @@ async function startPage() {
     }
 }
 
+
+// Sender like på en kommentar
 async function likeComment(commentId, postId) {
     await postWithoutBody(`/api/comments/${commentId}/like`);
 
+    // Oppdater kommentarene hvis de er åpne
     if (openComments.has(postId)) {
         showComments(postId);
     }
 }
 
+
+// Kjør startfunksjonen når scriptet lastes
 startPage();
